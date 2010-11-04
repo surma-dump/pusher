@@ -21,7 +21,7 @@ type Pusher struct {
 type PushFunc func(obj interface{})
 
 // Create a new pusher which works on an existing slice.
-// v has to be a pointer to slice
+// v has to be a pointer to a slice
 func New(v interface{}) (p *Pusher) {
 	p = new(Pusher)
 	p.data = getSliceValue(v)
@@ -29,6 +29,12 @@ func New(v interface{}) (p *Pusher) {
 		pusherFunc(p, obj)
 	}
 	return p
+}
+
+func (p *Pusher) growSlice(newSize int) {
+	newData := MakeSlice(p.getSliceType(), p.data.Len(), newSize)
+	ArrayCopy(newData, p.data)
+	p.data.SetValue(newData)
 }
 
 func getSliceValue(v interface{}) *SliceValue {
@@ -43,17 +49,25 @@ func (p *Pusher) getSliceType() *SliceType {
 	return p.data.Type().(*SliceType)
 }
 
+func (p *Pusher) getElemType() Type {
+	return p.getSliceType().Elem()
+}
+
+func (p *Pusher) isInterfaceType() bool {
+	_, ok := p.getElemType().(*InterfaceType)
+	return ok
+}
+
 func pusherFunc(p *Pusher, obj interface{}) {
-	if !isEqualType(p, obj) {
+	if !p.isInterfaceType() && !isEqualType(p, obj) {
 		panic("Incompatible types")
 	}
 	len, cap := p.data.Len(), p.data.Cap()
 	if len == cap {
-		newData := MakeSlice(p.getSliceType(), len, (len+10)*2)
-		ArrayCopy(newData, p.data)
-		p.data.SetValue(newData)
+		p.growSlice((cap+1)*2)
 	}
 	p.data.SetLen(len+1)
 	p.data.Elem(len).SetValue(NewValue(obj))
 	return
 }
+
