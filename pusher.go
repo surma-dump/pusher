@@ -33,7 +33,7 @@ func New(v interface{}) (p *Pusher) {
 
 func (p *Pusher) growSlice(newSize int) {
 	newData := MakeSlice(p.getSliceType(), p.data.Len(), newSize)
-	ArrayCopy(newData, p.data)
+	Copy(newData, p.data)
 	p.data.SetValue(newData)
 }
 
